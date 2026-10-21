@@ -11,6 +11,7 @@ export default {
       const res = await fetch("https://generator.email/inbox7/", {
         method: "GET",
         redirect: "follow",
+
         headers: {
           "User-Agent":
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/155.0.0.0 Safari/537.36",
@@ -18,9 +19,11 @@ export default {
           "Accept":
             "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
 
-          "Accept-Language": "en-US,en;q=0.9",
+          "Accept-Language":
+            "en-US,en;q=0.9",
 
-          "Cookie": `inbox_ctx=${ctx}`,
+          "Cookie":
+            `inbox_ctx=${ctx}`,
         },
       });
 
@@ -35,19 +38,34 @@ export default {
       const numMessRaw =
         html.match(/num_mess\s*:\s*(\d+)/i)?.[1];
 
-      const messId =
+      const messageId =
         html.match(/mess_id_raw\s*:\s*"([^"]*)"/i)?.[1] || null;
 
-      const hasTest123 = /TEST123/i.test(html);
-      const hasHello = /hello/i.test(html);
+      let messageContext = null;
+
+      if (messageId) {
+        const pos = html.indexOf(messageId);
+
+        if (pos !== -1) {
+          messageContext = html.slice(
+            Math.max(0, pos - 1000),
+            Math.min(
+              html.length,
+              pos + messageId.length + 2000
+            )
+          );
+        }
+      }
 
       return Response.json({
         success: res.ok,
+
         status: res.status,
 
         mailbox: {
           user: curUser,
           domain: curDomain,
+
           email:
             curUser && curDomain
               ? `${curUser}@${curDomain}`
@@ -60,11 +78,10 @@ export default {
               ? Number(numMessRaw)
               : null,
 
-          message_id: messId,
-
-          test_subject_found: hasTest123,
-          test_body_found: hasHello,
+          message_id: messageId,
         },
+
+        message_context: messageContext,
 
         elapsed_ms: Date.now() - started,
       });
@@ -73,10 +90,22 @@ export default {
       return Response.json(
         {
           success: false,
-          error: error?.message || String(error),
-          elapsed_ms: Date.now() - started,
+
+          error:
+            error?.message ||
+            String(error),
+
+          error_name:
+            error?.name ||
+            null,
+
+          elapsed_ms:
+            Date.now() - started,
         },
-        { status: 500 }
+
+        {
+          status: 500,
+        }
       );
     }
   },
