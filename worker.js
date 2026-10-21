@@ -1,13 +1,11 @@
 export default {
-  async fetch(request) {
-    const target = "https://generator.email/";
-
+  async fetch() {
     const started = Date.now();
 
     try {
-      const response = await fetch(target, {
+      const res = await fetch("https://generator.email/", {
         method: "GET",
-        redirect: "manual",
+        redirect: "follow",
         headers: {
           "User-Agent":
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/155.0.0.0 Safari/537.36",
@@ -17,40 +15,42 @@ export default {
         },
       });
 
-      const elapsed = Date.now() - started;
+      const html = await res.text();
 
-      const body = await response.text();
+      const user =
+        html.match(/id="userName"[^>]*value="([^"]+)"/i)?.[1] || null;
+
+      const domain =
+        html.match(/id="domainName2"[^>]*value="([^"]+)"/i)?.[1] || null;
+
+      const numMess =
+        html.match(/num_mess\s*:\s*(\d+)/i)?.[1] || null;
 
       return Response.json({
-        success: true,
-        target,
-        status: response.status,
-        statusText: response.statusText,
-        elapsed_ms: elapsed,
+        success: res.ok,
+        status: res.status,
 
-        headers: {
-          location: response.headers.get("location"),
-          server: response.headers.get("server"),
-          contentType: response.headers.get("content-type"),
-          contentLength: response.headers.get("content-length"),
+        mailbox: {
+          user,
+          domain,
+          email: user && domain ? `${user}@${domain}` : null,
         },
 
-        body_length: body.length,
+        inbox: {
+          message_count:
+            numMess !== null ? Number(numMess) : null,
+        },
 
-        body_preview: body.slice(0, 500),
+        elapsed_ms: Date.now() - started,
       });
     } catch (error) {
       return Response.json(
         {
           success: false,
-          target,
-          elapsed_ms: Date.now() - started,
           error: error?.message || String(error),
-          error_name: error?.name || null,
+          elapsed_ms: Date.now() - started,
         },
-        {
-          status: 500,
-        }
+        { status: 500 }
       );
     }
   },
