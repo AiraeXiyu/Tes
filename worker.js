@@ -22,8 +22,7 @@ export default {
           "Accept-Language":
             "en-US,en;q=0.9",
 
-          "Cookie":
-            `inbox_ctx=${ctx}`,
+          "Cookie": `inbox_ctx=${ctx}`,
         },
       });
 
@@ -44,9 +43,11 @@ export default {
       const curMsgId =
         html.match(/cur_msg_id\s*:\s*"([^"]*)"/i)?.[1] || null;
 
-      /*
-       * Ambil semua posisi message ID
-       */
+
+      // =========================================
+      // CARI SEMUA KEMUNCULAN MESSAGE ID
+      // =========================================
+
       const occurrences = [];
 
       if (messageId) {
@@ -55,7 +56,9 @@ export default {
         while (true) {
           const found = html.indexOf(messageId, pos);
 
-          if (found === -1) break;
+          if (found === -1) {
+            break;
+          }
 
           occurrences.push({
             position: found,
@@ -71,19 +74,20 @@ export default {
 
           pos = found + messageId.length;
 
-          /*
-           * Batasi supaya response tidak terlalu besar
-           */
-          if (occurrences.length >= 10) break;
+          if (occurrences.length >= 10) {
+            break;
+          }
         }
       }
 
-      /*
-       * Cari URL / endpoint yang terlihat
-       */
-      const urls = [
+
+      // =========================================
+      // CARI URL YANG BERHUBUNGAN DENGAN MESSAGE
+      // =========================================
+
+      const interestingUrls = [
         ...html.matchAll(
-          /(?:https?:\/\/[^\s"'<>]+|\/[A-Za-z0-9_./?=&%-]+(?:\.php|\.html|\/)?)/gi
+          /(?:https?:\/\/[^\s"'<>]+|\/[A-Za-z0-9_./?=&%-]+)/gi
         ),
       ]
         .map((m) => m[0])
@@ -91,9 +95,11 @@ export default {
           /message|mail|inbox|read|detail|view|api|ajax|php/i.test(v)
         );
 
-      /*
-       * Cari baris yang berhubungan dengan message handling
-       */
+
+      // =========================================
+      // CARI BARIS YANG BERHUBUNGAN DENGAN MESSAGE
+      // =========================================
+
       const interestingLines = html
         .split(/\r?\n/)
         .filter((line) =>
@@ -103,22 +109,32 @@ export default {
         )
         .slice(0, 100);
 
-      /*
-       * Script JS yang dipakai halaman
-       */
+
+      // =========================================
+      // AMBIL SEMUA SCRIPT JS
+      // =========================================
+
       const scripts = [
         ...html.matchAll(
           /<script[^>]+src=["']([^"']+)["']/gi
         ),
       ].map((m) => m[1]);
 
+
+      // =========================================
+      // RESPONSE
+      // =========================================
+
       return Response.json({
         success: res.ok,
+
         status: res.status,
 
         mailbox: {
           user: curUser,
+
           domain: curDomain,
+
           email:
             curUser && curDomain
               ? `${curUser}@${curDomain}`
@@ -145,7 +161,7 @@ export default {
           occurrences,
 
           interesting_urls: [
-            ...new Set(urls),
+            ...new Set(interestingUrls),
           ].slice(0, 100),
 
           interesting_lines,
@@ -169,8 +185,7 @@ export default {
             error?.name ||
             null,
 
-          elapsed_ms:
-            Date.now() - started,
+          elapsed_ms: Date.now() - started,
         },
         {
           status: 500,
