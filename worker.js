@@ -44,10 +44,7 @@ export default {
         html.match(/cur_msg_id\s*:\s*"([^"]*)"/i)?.[1] || null;
 
 
-      // =========================================
-      // CARI SEMUA KEMUNCULAN MESSAGE ID
-      // =========================================
-
+      // Cari semua kemunculan message ID
       const occurrences = [];
 
       if (messageId) {
@@ -81,10 +78,7 @@ export default {
       }
 
 
-      // =========================================
-      // CARI URL YANG BERHUBUNGAN DENGAN MESSAGE
-      // =========================================
-
+      // Cari URL yang berhubungan dengan message/inbox
       const interestingUrls = [
         ...html.matchAll(
           /(?:https?:\/\/[^\s"'<>]+|\/[A-Za-z0-9_./?=&%-]+)/gi
@@ -96,10 +90,7 @@ export default {
         );
 
 
-      // =========================================
-      // CARI BARIS YANG BERHUBUNGAN DENGAN MESSAGE
-      // =========================================
-
+      // Cari baris yang berhubungan dengan message
       const interestingLines = html
         .split(/\r?\n/)
         .filter((line) =>
@@ -110,20 +101,13 @@ export default {
         .slice(0, 100);
 
 
-      // =========================================
-      // AMBIL SEMUA SCRIPT JS
-      // =========================================
-
+      // Cari semua file JavaScript
       const scripts = [
         ...html.matchAll(
           /<script[^>]+src=["']([^"']+)["']/gi
         ),
       ].map((m) => m[1]);
 
-
-      // =========================================
-      // RESPONSE
-      // =========================================
 
       return Response.json({
         success: res.ok,
@@ -132,7 +116,6 @@ export default {
 
         mailbox: {
           user: curUser,
-
           domain: curDomain,
 
           email:
@@ -158,15 +141,15 @@ export default {
           message_id_occurrences:
             occurrences.length,
 
-          occurrences,
+          occurrences: occurrences,
 
           interesting_urls: [
             ...new Set(interestingUrls),
           ].slice(0, 100),
 
-          interesting_lines,
+          interesting_lines: interestingLines,
 
-          scripts,
+          scripts: scripts,
         },
 
         elapsed_ms: Date.now() - started,
@@ -185,7 +168,8 @@ export default {
             error?.name ||
             null,
 
-          elapsed_ms: Date.now() - started,
+          elapsed_ms:
+            Date.now() - started,
         },
         {
           status: 500,
