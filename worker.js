@@ -41,31 +41,84 @@ export default {
       const messageId =
         html.match(/mess_id_raw\s*:\s*"([^"]*)"/i)?.[1] || null;
 
-      let messageContext = null;
+      const curMsgId =
+        html.match(/cur_msg_id\s*:\s*"([^"]*)"/i)?.[1] || null;
+
+      /*
+       * Ambil semua posisi message ID
+       */
+      const occurrences = [];
 
       if (messageId) {
-        const pos = html.indexOf(messageId);
+        let pos = 0;
 
-        if (pos !== -1) {
-          messageContext = html.slice(
-            Math.max(0, pos - 1000),
-            Math.min(
-              html.length,
-              pos + messageId.length + 2000
-            )
-          );
+        while (true) {
+          const found = html.indexOf(messageId, pos);
+
+          if (found === -1) break;
+
+          occurrences.push({
+            position: found,
+
+            context: html.slice(
+              Math.max(0, found - 1500),
+              Math.min(
+                html.length,
+                found + messageId.length + 3500
+              )
+            ),
+          });
+
+          pos = found + messageId.length;
+
+          /*
+           * Batasi supaya response tidak terlalu besar
+           */
+          if (occurrences.length >= 10) break;
         }
       }
 
+      /*
+       * Cari URL / endpoint yang terlihat
+       */
+      const urls = [
+        ...html.matchAll(
+          /(?:https?:\/\/[^\s"'<>]+|\/[A-Za-z0-9_./?=&%-]+(?:\.php|\.html|\/)?)/gi
+        ),
+      ]
+        .map((m) => m[0])
+        .filter((v) =>
+          /message|mail|inbox|read|detail|view|api|ajax|php/i.test(v)
+        );
+
+      /*
+       * Cari baris yang berhubungan dengan message handling
+       */
+      const interestingLines = html
+        .split(/\r?\n/)
+        .filter((line) =>
+          /mess_id_raw|cur_msg_id|messageId|message_id|load.*message|read.*message|message.*detail|fetch\(|ajax|XMLHttpRequest|\/message|\/mail/i.test(
+            line
+          )
+        )
+        .slice(0, 100);
+
+      /*
+       * Script JS yang dipakai halaman
+       */
+      const scripts = [
+        ...html.matchAll(
+          /<script[^>]+src=["']([^"']+)["']/gi
+        ),
+      ].map((m) => m[1]);
+
       return Response.json({
         success: res.ok,
-
         status: res.status,
 
         mailbox: {
           user: curUser,
           domain: curDomain,
-
           email:
             curUser && curDomain
               ? `${curUser}@${curDomain}`
@@ -79,9 +132,26 @@ export default {
               : null,
 
           message_id: messageId,
+
+          cur_msg_id: curMsgId,
         },
 
-        message_context: messageContext,
+        diagnostics: {
+          html_length: html.length,
+
+          message_id_occurrences:
+            occurrences.length,
+
+          occurrences,
+
+          interesting_urls: [
+            ...new Set(urls),
+          ].slice(0, 100),
+
+          interesting_lines,
+
+          scripts,
+        },
 
         elapsed_ms: Date.now() - started,
       });
@@ -102,7 +172,6 @@ export default {
           elapsed_ms:
             Date.now() - started,
         },
-
         {
           status: 500,
         }
