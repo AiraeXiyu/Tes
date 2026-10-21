@@ -1,3 +1,13 @@
+function getInputValue(html, id) {
+  const tag = html.match(
+    new RegExp(`<input\\b[^>]*\\bid=["']${id}["'][^>]*>`, "i")
+  )?.[0];
+
+  if (!tag) return null;
+
+  return tag.match(/\bvalue=["']([^"']*)["']/i)?.[1] || null;
+}
+
 export default {
   async fetch() {
     const started = Date.now();
@@ -18,13 +28,17 @@ export default {
       const html = await res.text();
 
       const user =
-        html.match(/id="userName"[^>]*value="([^"]+)"/i)?.[1] || null;
+        getInputValue(html, "userName") ||
+        html.match(/cur_user\s*:\s*"([^"]+)"/i)?.[1] ||
+        null;
 
       const domain =
-        html.match(/id="domainName2"[^>]*value="([^"]+)"/i)?.[1] || null;
+        getInputValue(html, "domainName2") ||
+        html.match(/cur_domain\s*:\s*"([^"]+)"/i)?.[1] ||
+        null;
 
-      const numMess =
-        html.match(/num_mess\s*:\s*(\d+)/i)?.[1] || null;
+      const numMessRaw =
+        html.match(/num_mess\s*:\s*(\d+)/i)?.[1];
 
       return Response.json({
         success: res.ok,
@@ -38,11 +52,14 @@ export default {
 
         inbox: {
           message_count:
-            numMess !== null ? Number(numMess) : null,
+            numMessRaw !== undefined
+              ? Number(numMessRaw)
+              : null,
         },
 
         elapsed_ms: Date.now() - started,
       });
+
     } catch (error) {
       return Response.json(
         {
